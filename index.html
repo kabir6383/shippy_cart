@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShippyCart | One-Stop Shopping</title>
+    
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        :root { --green: #27ae60; --dark: #1a1a1a; --bg: #f8f9fa; --white: #ffffff; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: var(--bg); color: var(--dark); }
+        
+        /* Auth Screen */
+        .auth-overlay { height: 100vh; display: flex; justify-content: center; align-items: center; background: #e8f5e9; }
+        .auth-box { background: white; padding: 40px; border-radius: 20px; text-align: center; width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .auth-box input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        
+        /* Navigation */
+        .navbar { display: flex; justify-content: space-between; align-items: center; padding: 15px 5%; background: white; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 100; }
+        .logo { font-size: 1.5rem; font-weight: 800; letter-spacing: -1px; }
+        .logo span { color: var(--green); }
+        .search-wrap { background: #f1f3f4; display: flex; align-items: center; padding: 8px 15px; border-radius: 10px; width: 40%; gap: 10px; }
+        .search-wrap input { border: none; background: transparent; outline: none; width: 100%; font-size: 0.9rem; }
+        
+        /* Categories */
+        .cat-nav { display: flex; justify-content: center; gap: 10px; padding: 20px; flex-wrap: wrap; }
+        .cat-nav button { background: white; border: 1px solid #ddd; padding: 8px 18px; border-radius: 20px; cursor: pointer; transition: 0.2s; }
+        .cat-nav button.active { background: var(--green); color: white; border-color: var(--green); }
+        
+        /* Product Grid */
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; padding: 0 5% 40px; }
+        .card { background: white; border-radius: 15px; padding: 15px; position: relative; border: 1px solid #eee; transition: transform 0.2s; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .card img { width: 100%; height: 200px; object-fit: cover; border-radius: 10px; }
+        .source-tag { position: absolute; top: 20px; left: 20px; background: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); color: var(--green); }
+        
+        /* Cart Drawer */
+        .cart-pane { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; justify-content: flex-end; }
+        .cart-inner { width: 350px; background: white; padding: 30px; display: flex; flex-direction: column; }
+        .cart-item { display: flex; gap: 10px; border-bottom: 1px solid #eee; padding: 10px 0; align-items: center; }
+        .cart-item img { width: 50px; height: 50px; border-radius: 5px; object-fit: cover; }
+        
+        /* Buttons */
+        .btn-green { background: var(--green); color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-add { background: var(--dark); color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const PRODUCTS = [
+            { id: 1, name: 'iPhone 15 (128 GB) - Blue', price: 79900, category: 'Electronics', source: 'Amazon', img: 'https://m.media-amazon.com/images/I/71d7rfSl0wL._SL1500_.jpg' },
+            { id: 2, name: 'L’Oréal Revitalift Serum', price: 899, category: 'Beauty', source: 'Nykaa', img: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=400' },
+            { id: 3, name: 'Maggi Noodles (Pack of 12)', price: 168, category: 'Grocery', source: 'JioMart', img: 'https://www.jiomart.com/images/product/original/490001091/maggi-2-minute-masala-noodles-70-g-product-images-o490001091-p490001091-0-202203170453.jpg' },
+            { id: 4, name: 'MAC Studio Fix Powder', price: 2900, category: 'Beauty', source: 'Nykaa', img: 'https://images.unsplash.com/photo-1596704017254-9b121068fb31?w=400' },
+            { id: 5, name: 'Sony WH-1000XM5', price: 29990, category: 'Electronics', source: 'Amazon', img: 'https://m.media-amazon.com/images/I/51aB7hr88RL._SL1500_.jpg' },
+            { id: 6, name: 'Organic Almonds 500g', price: 450, category: 'Grocery', source: 'BigBasket', img: 'https://images.unsplash.com/photo-1508817628294-5a453fa0b8fb?w=400' }
+        ];
+
+        function App() {
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [cart, setCart] = useState([]);
+            const [isCartOpen, setIsCartOpen] = useState(false);
+            const [filter, setFilter] = useState('All');
+            const [search, setSearch] = useState('');
+
+            const formatPrice = (p) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(p);
+
+            const filteredProducts = PRODUCTS.filter(p => {
+                const matchesCategory = filter === 'All' || p.category === filter;
+                const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.source.toLowerCase().includes(search.toLowerCase());
+                return matchesCategory && matchesSearch;
+            });
+
+            const addToCart = (p) => {
+                setCart([...cart, { ...p, cartId: Math.random() }]);
+                // Trigger icon update
+                setTimeout(() => lucide.createIcons(), 10);
+            };
+
+            const removeFromCart = (id) => setCart(cart.filter(item => item.cartId !== id));
+
+            // Icons need to be refreshed whenever the UI changes
+            useEffect(() => { lucide.createIcons(); }, [isLoggedIn, isCartOpen, filter, search]);
+
+            if (!isLoggedIn) {
+                return (
+                    <div className="auth-overlay">
+                        <div className="auth-box">
+                            <i data-lucide="shopping-bag" style={{ color: '#27ae60', width: '40px', height: '40px', margin: '0 auto 10px' }}></i>
+                            <h2 style={{ margin: '0 0 5px 0' }}>ShippyCart</h2>
+                            <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: '20px' }}>Your Multi-Store Gateway</p>
+                            <input type="email" placeholder="Email" />
+                            <input type="password" placeholder="Password" />
+                            <button className="btn-green" onClick={() => setIsLoggedIn(true)}>Login to Shop</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div>
+                    <nav className="navbar">
+                        <div className="logo">SHIPPY<span>CART</span></div>
+                        <div className="search-wrap">
+                            <i data-lucide="search" size="18"></i>
+                            <input placeholder="Search products or stores..." onChange={(e) => setSearch(e.target.value)} />
+                        </div>
+                        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                            <div onClick={() => setIsCartOpen(true)} style={{ position: 'relative', cursor: 'pointer' }}>
+                                <i data-lucide="shopping-cart"></i>
+                                <span style={{ position: 'absolute', top: '-10px', right: '-10px', background: 'red', color: 'white', fontSize: '10px', padding: '2px 6px', borderRadius: '10px' }}>{cart.length}</span>
+                            </div>
+                            <i data-lucide="user" style={{ cursor: 'pointer' }} onClick={() => setIsLoggedIn(false)}></i>
+                        </div>
+                    </nav>
+
+                    <div className="cat-nav">
+                        {['All', 'Grocery', 'Beauty', 'Electronics'].map(c => (
+                            <button key={c} className={filter === c ? 'active' : ''} onClick={() => setFilter(c)}>{c}</button>
+                        ))}
+                    </div>
+
+                    <div className="product-grid">
+                        {filteredProducts.map(p => (
+                            <div key={p.id} className="card">
+                                <span className="source-tag">{p.source}</span>
+                                <img src={p.img} alt={p.name} />
+                                <h4 style={{ fontSize: '0.9rem', margin: '12px 0' }}>{p.name}</h4>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontWeight: 'bold' }}>{formatPrice(p.price)}</span>
+                                    <button className="btn-add" onClick={() => addToCart(p)}>Add</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {isCartOpen && (
+                        <div className="cart-pane" onClick={() => setIsCartOpen(false)}>
+                            <div className="cart-inner" onClick={e => e.stopPropagation()}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                    <h2>My Cart</h2>
+                                    <i data-lucide="x" onClick={() => setIsCartOpen(false)} style={{ cursor: 'pointer' }}></i>
+                                </div>
+                                <div style={{ flex: 1, overflowY: 'auto' }}>
+                                    {cart.map(item => (
+                                        <div key={item.cartId} className="cart-item">
+                                            <img src={item.img} />
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontSize: '0.8rem' }}>{item.name}</div>
+                                                <div style={{ fontWeight: 'bold' }}>{formatPrice(item.price)}</div>
+                                            </div>
+                                            <i data-lucide="trash-2" style={{ color: 'red', cursor: 'pointer', width: '16px' }} onClick={() => removeFromCart(item.cartId)}></i>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div style={{ borderTop: '2px solid #eee', paddingTop: '20px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', fontWeight: 'bold' }}>
+                                        <span>Total:</span>
+                                        <span>{formatPrice(cart.reduce((s, i) => s + i.price, 0))}</span>
+                                    </div>
+                                    <button className="btn-green" onClick={() => { alert('Order Placed!'); setCart([]); setIsCartOpen(false); }}>Place Order</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

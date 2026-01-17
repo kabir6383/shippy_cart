@@ -1,0 +1,16 @@
+{
+  "name": "shopping-web",
+  "version": "1.0.0",
+  "description": "its a shopping app",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "start": "react-scripts start"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "lucide-react": "^0.562.0",
+    "vite": "^6.4.1"
+  }
+}
